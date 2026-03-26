@@ -1,15 +1,13 @@
 const CACHE_NAME = 'auraprompt-v1-elite';
 
-// Asset inti yang WAJIB dicache untuk offline fallback pertama kali
+// Hanya masukkan fail tempatan. 
+// JANGAN letak CDN di sini kerana jika satu gagal, seluruh Service Worker gagal dipasang.
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  // CDN Resources
-  'https://cdn.tailwindcss.com',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  'https://unpkg.com/lucide@latest',
-  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'
+  './assets/icon-192x192.png',
+  './assets/icon-512x512.png'
 ];
 
 // Install Event - Precache App Shell
@@ -43,9 +41,11 @@ self.addEventListener('fetch', (event) => {
   // Hanya tangani request GET
   if (event.request.method !== 'GET') return;
 
+  // Abaikan request dari extension chrome
+  if (event.request.url.startsWith('chrome-extension')) return;
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Return dari cache jika ada
       if (cachedResponse) {
         // Fetch ke network di background untuk update cache (Stale While Revalidate)
         fetch(event.request).then((networkResponse) => {
@@ -59,10 +59,10 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
 
-      // Jika tidak ada di cache, coba fetch dari network
+      // Jika tidak ada di cache, cuba fetch dari network
       return fetch(event.request).then((networkResponse) => {
-        // Cache resources yang baru didapat agar offline siap sedia
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        // Cache CDN dan resources yang baru didapat agar offline siap sedia
+        if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
@@ -75,7 +75,6 @@ self.addEventListener('fetch', (event) => {
         if (event.request.mode === 'navigate') {
           return caches.match('./index.html');
         }
-        // Jika tidak, biarkan gagal (browser akan handle misal gambar rusak, dll)
       });
     })
   );

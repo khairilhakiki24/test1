@@ -526,6 +526,12 @@
                 document.getElementById('setting-color').value = savedColor;
                 document.getElementById('color-hex-display').textContent = savedColor;
 
+                // UPDATE DINAMIS WARNA BAR ATAS (STATUS BAR)
+                const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                if (metaThemeColor) {
+                    metaThemeColor.setAttribute('content', savedColor);
+                }
+
                 const savedName = localStorage.getItem('aura_app_name') || 'AuraPrompt';
                 document.getElementById('app-name-desktop').textContent = savedName;
                 document.getElementById('app-name-mobile').textContent = savedName;

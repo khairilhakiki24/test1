@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buku Panduan - AuraPrompt</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Plus Jakarta Sans', sans-serif; } </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-purple-500 selection:text-white pb-20">
+
+    <header class="bg-indigo-600 text-white pt-20 pb-16 px-6 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-indigo-600 to-purple-800 opacity-90"></div>
+        <div class="relative max-w-4xl mx-auto z-10 text-center">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Manual Book <span class="text-purple-300">AuraPrompt</span></h1>
+            <p class="text-lg md:text-xl text-indigo-100 opacity-90 max-w-2xl mx-auto">Panduan lengkap Instalasi, Penggunaan, dan Modifikasi (White-label) Web App PWA Anda.</p>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-6 -mt-8 relative z-20 space-y-8">
+        
+        <!-- BAB 1 -->
+        <section class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+            <h2 class="text-2xl font-bold text-indigo-600 mb-6 border-b pb-4">1. Panduan Fitur Utama</h2>
+            <div class="space-y-4">
+                <div class="flex gap-4">
+                    <div class="w-8 h-8 shrink-0 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">1</div>
+                    <div>
+                        <h3 class="font-bold text-lg">Manajemen Prompt & Anti-Data Loss</h3>
+                        <p class="text-slate-600 mt-1 leading-relaxed">Aplikasi ini menyimpan data murni di browser pengguna menggunakan <b>IndexedDB</b>. Anda tidak perlu menyewa database (MySQL/Firebase). Selain itu, terdapat fitur <b>State Persistence</b>: Jika Anda sedang mengetik prompt panjang lalu tidak sengaja keluar/refresh web, tulisan Anda akan tersimpan sebagai Draft.</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="w-8 h-8 shrink-0 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">2</div>
+                    <div>
+                        <h3 class="font-bold text-lg">Backup & Restore (Excel)</h3>
+                        <p class="text-slate-600 mt-1 leading-relaxed">Buka menu <b>Pengaturan</b>. Anda bisa men-download seluruh prompt Anda menjadi file <code>.xlsx</code> (Excel). File ini bisa dipindahkan ke HP/Laptop lain, lalu di-import kembali melalui tombol "Import dari Excel".</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="w-8 h-8 shrink-0 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold">3</div>
+                    <div>
+                        <h3 class="font-bold text-lg">PWA Offline First</h3>
+                        <p class="text-slate-600 mt-1 leading-relaxed">Setelah website dibuka pertama kali, matikan koneksi internet (Airplane Mode). Refresh halaman web. Aplikasi akan <b>TETAP BERJALAN 100%</b> karena menggunakan teknologi Service Worker. Tidak akan ada layar "Dinosaurus Chrome".</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BAB 2 -->
+        <section class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+            <h2 class="text-2xl font-bold text-indigo-600 mb-6 border-b pb-4">2. Panduan Modifikasi & Branding (White Label)</h2>
+            <p class="text-slate-600 mb-4">Anda dapat menjual ulang aplikasi ini dengan nama dan warna lain (SaaS / White Label).</p>
+            
+            <ul class="list-disc pl-5 space-y-3 text-slate-700">
+                <li><b>Ganti Nama Aplikasi:</b> Buka aplikasi web, masuk ke tab <b>Pengaturan</b>, ketik nama baru (Misal: "PromptMaster"), lalu klik Simpan.</li>
+                <li><b>Ganti Warna Tema:</b> Di menu Pengaturan yang sama, klik Color Picker dan pilih warna brand Anda (misal Merah atau Hijau). Aplikasi akan seketika berubah warna tanpa perlu ngoding.</li>
+                <li>
+                    <b class="text-red-600">PENTING: Ganti Icon PWA</b><br>
+                    Buat folder bernama <code>assets</code> di sebelah file <code>index.html</code>. Masukkan 2 file gambar berformat <b>.png</b> (jangan JPG/SVG):
+                    <ul class="list-decimal pl-5 mt-2 font-mono text-sm bg-slate-50 p-3 rounded">
+                        <li>assets/icon-192x192.png (Ukuran wajib 192x192 pixel)</li>
+                        <li>assets/icon-512x512.png (Ukuran wajib 512x512 pixel)</li>
+                    </ul>
+                    <i class="text-sm mt-1 text-slate-500 block">Ini sangat penting agar saat aplikasi di "Add to Home Screen" di HP, logonya tidak pecah.</i>
+                </li>
+            </ul>
+        </section>
+
+        <!-- BAB 3 -->
+        <section class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+            <h2 class="text-2xl font-bold text-indigo-600 mb-6 border-b pb-4">3. Panduan Hosting / Instalasi</h2>
+            <p class="text-slate-600 mb-4">Karena ini adalah Single File Application berbasis Statis, hostingnya <b>sangat mudah dan bisa GRATIS 100%</b>.</p>
+            
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded mb-6">
+                <p class="text-blue-800 font-medium">Struktur Folder yang harus diupload:</p>
+                <ul class="font-mono text-sm text-blue-900 mt-2 list-inside list-disc">
+                    <li>index.html</li>
+                    <li>manifest.json</li>
+                    <li>sw.js</li>
+                    <li>assets/ (folder berisi icon PNG Anda)</li>
+                </ul>
+            </div>
+
+            <h3 class="font-bold text-lg mb-2">Opsi 1: Menggunakan cPanel (Shared Hosting)</h3>
+            <ol class="list-decimal pl-5 space-y-2 text-slate-700">
+                <li>Login ke cPanel hosting Anda.</li>
+                <li>Buka <b>File Manager</b> -> Masuk ke folder <code>public_html</code> atau folder subdomain Anda.</li>
+                <li>Klik tombol <b>Upload</b>, pilih file-file di atas. Selesai!</li>
+                <li>Akses website Anda (wajib <b>HTTPS://</b> agar PWA bisa diinstal).</li>
+            </ol>
+
+            <h3 class="font-bold text-lg mt-6 mb-2">Opsi 2: Gratis via GitHub Pages / Vercel</h3>
+            <ol class="list-decimal pl-5 space-y-2 text-slate-700">
+                <li>Buat akun GitHub, buat repository baru (public).</li>
+                <li>Upload file-file ke repository tersebut.</li>
+                <li>Pergi ke Settings -> Pages -> Pilih Branch "main", lalu Save.</li>
+                <li>Tunggu 1-2 menit, web Anda sudah live dengan URL gratis dari GitHub dan otomatis HTTPS.</li>
+            </ol>
+        </section>
+
+    </main>
+
+    <footer class="mt-16 text-center text-slate-500 pb-8">
+        <p>© 2026 Bejaja Digital. Hak Cipta Dilindungi.</p>
+        <p class="text-sm mt-1">Diciptakan oleh Elite Full-Stack Engineer.</p>
+    </footer>
+
+</body>
+</html>

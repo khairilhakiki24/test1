@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AuraPrompt - AI Prompt Manager</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#7c3aed">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Default Premium Color */
+            --color-primary: #7c3aed; 
+            --color-primary-light: color-mix(in srgb, var(--color-primary) 15%, transparent);
+        }
+
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        
+        /* Animasi & Interaksi */
+        .btn-press { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .btn-press:active { transform: scale(0.96); }
+        
+        @keyframes fadeSlideUp { 
+            0% { opacity: 0; transform: translateY(20px); } 
+            100% { opacity: 1; transform: translateY(0); } 
+        }
+        .animate-fade-up { animation: fadeSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes toastSlide {
+            0% { opacity: 0; transform: translate(-50%, -20px); }
+            10% { opacity: 1; transform: translate(-50%, 0); }
+            90% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
+        }
+        .animate-toast { animation: toastSlide 3s ease-in-out forwards; }
+
+        /* Glassmorphism */
+        .glass-nav { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+            border-top: 1px solid rgba(0,0,0,0.05); 
+        }
+        .dark .glass-nav { 
+            background: rgba(11, 17, 32, 0.85); 
+            border-top: 1px solid rgba(255,255,255,0.05); 
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* Safe Area Padding untuk konten utama (agar bisa scroll sampai bawah nav) */
+        .pb-safe { padding-bottom: calc(90px + env(safe-area-inset-bottom, 20px)); }
+        
+        /* Safe Area Padding khusus navigasi mobile agar menempel estetik di bawah */
+        .pb-nav-safe { padding-bottom: calc(12px + env(safe-area-inset-bottom, 12px)); }
+        
+        /* Form Focus Ring overriding */
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-primary-light);
+        }
+
+        /* Mobile Swipe Sheet Logic */
+        .bottom-sheet {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;  
+            overflow: hidden;
+        }
+    </style>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: 'var(--color-primary)', 
+                        primaryLight: 'var(--color-primary-light)',
+                        darkBg: '#0B1120',
+                        darkSurface: '#1E293B'
+                    },
+                    boxShadow: {
+                        'soft': '0 20px 40px -15px rgba(0,0,0,0.05)',
+                        'glow': '0 0 20px var(--color-primary-light)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-darkBg dark:text-slate-200 h-screen flex overflow-hidden selection:bg-primary selection:text-white">
+
+    <!-- 1. NOTIFIKASI TOAST -->
+    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- 2. SIDEBAR DESKTOP -->
+    <aside class="hidden md:flex flex-col w-72 bg-white dark:bg-darkSurface border-r border-slate-200 dark:border-slate-800 z-20">
+        <div class="p-6 flex items-center gap-3">
+            <div id="app-logo-desktop" class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white shadow-glow">
+                <i data-lucide="sparkles"></i>
+            </div>
+            <h1 id="app-name-desktop" class="font-bold text-xl tracking-tight">AuraPrompt</h1>
+        </div>
+        
+        <nav class="flex-1 px-4 py-2 space-y-2">
+            <button onclick="switchTab('dashboard')" id="nav-desktop-dashboard" class="desktop-nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 btn-press transition-colors">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="font-medium">Dashboard</span>
+            </button>
+            <button onclick="switchTab('prompts')" id="nav-desktop-prompts" class="desktop-nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 btn-press transition-colors">
+                <i data-lucide="terminal-square" class="w-5 h-5"></i>
+                <span class="font-medium">Prompts</span>
+            </button>
+            <button onclick="switchTab('favorites')" id="nav-desktop-favorites" class="desktop-nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 btn-press transition-colors">
+                <i data-lucide="star" class="w-5 h-5"></i>
+                <span class="font-medium">Favorit</span>
+            </button>
+            <button onclick="switchTab('settings')" id="nav-desktop-settings" class="desktop-nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 btn-press transition-colors">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                <span class="font-medium">Pengaturan</span>
+            </button>
+        </nav>
+
+        <div class="p-6">
+            <button onclick="openFormModal()" class="w-full bg-primary hover:opacity-90 text-white font-semibold py-3 px-4 rounded-xl shadow-soft btn-press flex items-center justify-center gap-2">
+                <i data-lucide="plus" class="w-5 h-5"></i> Prompt Baru
+            </button>
+        </div>
+    </aside>
+
+    <!-- 3. MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- Topbar Mobile -->
+        <header class="md:hidden glass-nav z-10 px-5 py-4 flex items-center justify-between sticky top-0">
+            <div class="flex items-center gap-3">
+                <div id="app-logo-mobile" class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-white">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                </div>
+                <h1 id="app-name-mobile" class="font-bold text-lg tracking-tight">AuraPrompt</h1>
+            </div>
+            <button onclick="toggleDarkMode()" class="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 btn-press">
+                <i data-lucide="moon" id="mobile-theme-icon" class="w-5 h-5"></i>
+            </button>
+        </header>
+
+        <!-- Scrollable Content -->
+        <div id="content-scroll-area" class="flex-1 overflow-y-auto pb-safe p-5 md:p-8 relative scroll-smooth">
+            
+            <!-- VIEW: DASHBOARD -->
+            <div id="view-dashboard" class="view-section hidden animate-fade-up">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold">Ringkasan</h2>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Status database prompt Anda hari ini.</p>
+                    </div>
+                    <button onclick="toggleDarkMode()" class="hidden md:flex p-2.5 rounded-xl bg-white dark:bg-darkSurface border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 btn-press shadow-sm">
+                        <i data-lucide="moon" id="desktop-theme-icon" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="glass-panel p-5 rounded-2xl shadow-soft">
+                        <div class="w-10 h-10 rounded-full bg-primaryLight text-primary flex items-center justify-center mb-3">
+                            <i data-lucide="database" class="w-5 h-5"></i>
+                        </div>
+                        <p class="text-3xl font-bold" id="stat-total">0</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Prompt</p>
+                    </div>
+                    <div class="glass-panel p-5 rounded-2xl shadow-soft">
+                        <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center mb-3">
+                            <i data-lucide="star" class="w-5 h-5"></i>
+                        </div>
+                        <p class="text-3xl font-bold" id="stat-fav">0</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Favorit</p>
+                    </div>
+                    <div class="glass-panel p-5 rounded-2xl shadow-soft">
+                        <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center mb-3">
+                            <i data-lucide="copy" class="w-5 h-5"></i>
+                        </div>
+                        <p class="text-3xl font-bold" id="stat-copied">0</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Disalin</p>
+                    </div>
+                    <div class="glass-panel p-5 rounded-2xl shadow-soft">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-500 flex items-center justify-center mb-3">
+                            <i data-lucide="folder" class="w-5 h-5"></i>
+                        </div>
+                        <p class="text-3xl font-bold" id="stat-cat">0</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Kategori</p>
+                    </div>
+                </div>
+
+                <h3 class="text-lg font-bold mb-4">Baru Ditambahkan</h3>
+                <div id="recent-prompts-container" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- VIEW: PROMPTS -->
+            <div id="view-prompts" class="view-section hidden animate-fade-up">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <h2 class="text-2xl font-bold">Koleksi Prompt</h2>
+                    
+                    <div class="flex items-center gap-2">
+                        <div class="relative w-full md:w-64">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                            <input type="text" id="search-input" oninput="renderPrompts()" placeholder="Cari prompt..." class="w-full bg-white dark:bg-darkSurface border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
+                        </div>
+                        <select id="filter-category" onchange="renderPrompts()" class="bg-white dark:bg-darkSurface border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary transition-all">
+                            <option value="all">Semua Kategori</option>
+                            <!-- Injected by JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 text-center">
+                    <div class="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                        <i data-lucide="inbox" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="text-lg font-bold">Belum ada Prompt</h3>
+                    <p class="text-slate-500 text-sm max-w-xs mt-2 mb-6">Mulai simpan prompt AI andalan Anda agar mudah disalin kapan saja tanpa internet.</p>
+                    <button onclick="openFormModal()" class="bg-primary text-white px-6 py-2.5 rounded-full font-medium btn-press flex items-center gap-2 shadow-glow">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Tambah Sekarang
+                    </button>
+                </div>
+
+                <div id="prompts-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                    <!-- Prompts Injected by JS -->
+                </div>
+            </div>
+
+            <!-- VIEW: FAVORITES (TAB BARU) -->
+            <div id="view-favorites" class="view-section hidden animate-fade-up">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold flex items-center gap-2"><i data-lucide="star" class="w-6 h-6 text-amber-500 fill-amber-500"></i> Prompt Favorit</h2>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Kumpulan prompt andalan yang paling sering Anda gunakan.</p>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <div class="relative w-full md:w-64">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                            <input type="text" id="search-input-fav" oninput="renderFavorites()" placeholder="Cari favorit..." class="w-full bg-white dark:bg-darkSurface border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
+                        </div>
+                        <select id="filter-category-fav" onchange="renderFavorites()" class="bg-white dark:bg-darkSurface border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary transition-all">
+                            <option value="all">Semua Kategori</option>
+                            <!-- Injected by JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state-fav" class="hidden flex flex-col items-center justify-center py-20 text-center">
+                    <div class="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center text-amber-500 mb-4">
+                        <i data-lucide="star" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="text-lg font-bold">Belum ada Favorit</h3>
+                    <p class="text-slate-500 text-sm max-w-xs mt-2 mb-6">Tandai prompt dengan ikon bintang agar muncul di halaman ini.</p>
+                    <button onclick="switchTab('prompts')" class="bg-primary text-white px-6 py-2.5 rounded-full font-medium btn-press flex items-center gap-2 shadow-glow">
+                        <i data-lucide="search" class="w-4 h-4"></i> Cari Prompt
+                    </button>
+                </div>
+
+                <div id="favorites-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                    <!-- Favorites Injected by JS -->
+                </div>
+            </div>
+
+            <!-- VIEW: SETTINGS -->
+            <div id="view-settings" class="view-section hidden animate-fade-up max-w-3xl">
+                <h2 class="text-2xl font-bold mb-6">Pengaturan Aplikasi</h2>
+
+                <div class="space-y-6">
+                    <!-- Branding Settings -->
+                    <div class="glass-panel p-6 rounded-2xl">
+                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="palette" class="w-5 h-5 text-primary"></i> Personalisasi & Branding</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Nama Aplikasi</label>
+                                <input type="text" id="setting-app-name" class="w-full bg-white dark:bg-darkSurface border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 transition-all" value="AuraPrompt">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Warna Tema Utama</label>
+                                <div class="flex items-center gap-4">
+                                    <input type="color" id="setting-color" class="w-12 h-12 rounded cursor-pointer border-0 p-0" value="#7c3aed">
+                                    <span class="text-sm font-mono bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded border border-slate-200 dark:border-slate-700" id="color-hex-display">#7c3aed</span>
+                                </div>
+                            </div>
+                            
+                            <button onclick="saveBranding()" class="bg-primary text-white px-5 py-2.5 rounded-xl font-medium btn-press shadow-soft">Simpan Perubahan</button>
+                        </div>
+                    </div>
+
+                    <!-- Backup & Restore -->
+                    <div class="glass-panel p-6 rounded-2xl">
+                        <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="database-zap" class="w-5 h-5 text-primary"></i> Backup & Restore Data</h3>
+                        <p class="text-sm text-slate-500 mb-4">Amankan koleksi prompt Anda ke dalam file Excel (.xlsx) atau kembalikan data dari perangkat lain.</p>
+                        
+                        <div class="flex flex-wrap gap-3">
+                            <button onclick="exportToExcel()" class="bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-medium btn-press flex items-center gap-2 shadow-soft">
+                                <i data-lucide="download" class="w-4 h-4"></i> Export ke Excel
+                            </button>
+                            
+                            <label class="bg-blue-500 text-white px-5 py-2.5 rounded-xl font-medium btn-press flex items-center gap-2 cursor-pointer shadow-soft">
+                                <i data-lucide="upload" class="w-4 h-4"></i> Import dari Excel
+                                <input type="file" id="import-excel" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 p-6 rounded-2xl mt-8">
+                        <h3 class="font-bold text-red-600 dark:text-red-400 mb-2 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-5 h-5"></i> Zona Berbahaya</h3>
+                        <p class="text-sm text-red-500/80 mb-4">Tindakan ini akan menghapus seluruh data prompt di browser ini dan tidak dapat dibatalkan.</p>
+                        <button onclick="factoryReset()" class="bg-red-500 text-white px-5 py-2.5 rounded-xl font-medium btn-press flex items-center gap-2 shadow-soft">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i> Reset Aplikasi (Hapus Data)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- FAB LAMA DIHAPUS, DIGANTI NAVIGASI BAWAH BARU -->
+        
+        <!-- 4. MOBILE BOTTOM NAV (5 Menu dengan Tombol Plus Tengah) -->
+        <nav class="md:hidden fixed bottom-0 left-0 w-full glass-nav pb-nav-safe pt-2 px-4 z-40 flex justify-between items-center rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+            <button onclick="switchTab('dashboard')" id="nav-mobile-dashboard" class="mobile-nav-item flex flex-col items-center gap-1 p-2 text-slate-400 transition-colors w-14">
+                <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">Home</span>
+            </button>
+            <button onclick="switchTab('prompts')" id="nav-mobile-prompts" class="mobile-nav-item flex flex-col items-center gap-1 p-2 text-slate-400 transition-colors w-14">
+                <i data-lucide="terminal-square" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">Prompts</span>
+            </button>
+            
+            <!-- Center Add Button (Floating Cutout) -->
+            <div class="relative -top-6 flex justify-center w-16">
+                <button onclick="openFormModal()" class="w-14 h-14 bg-primary text-white rounded-full shadow-glow flex items-center justify-center btn-press border-4 border-slate-50 dark:border-darkBg transition-transform hover:scale-105 active:scale-95">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <button onclick="switchTab('favorites')" id="nav-mobile-favorites" class="mobile-nav-item flex flex-col items-center gap-1 p-2 text-slate-400 transition-colors w-14">
+                <i data-lucide="star" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">Favorit</span>
+            </button>
+            <button onclick="switchTab('settings')" id="nav-mobile-settings" class="mobile-nav-item flex flex-col items-center gap-1 p-2 text-slate-400 transition-colors w-14">
+                <i data-lucide="settings" class="w-6 h-6"></i>
+                <span class="text-[10px] font-medium">Setting</span>
+            </button>
+        </nav>
+    </main>
+
+    <!-- MODAL / BOTTOM SHEET: FORM PROMPT -->
+    <div id="form-modal" class="fixed inset-0 z-50 hidden">
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" onclick="closeFormModal()"></div>
+        
+        <!-- Modal Content -->
+        <div id="form-modal-content" class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:w-[600px] bg-white dark:bg-darkSurface md:rounded-2xl rounded-t-3xl shadow-2xl flex flex-col bottom-sheet max-h-[90vh] md:max-h-[85vh]">
+            
+            <!-- Drag Handle (Mobile Only) -->
+            <div id="cart-drag-handle" class="md:hidden w-full h-8 flex justify-center items-center cursor-grab active:cursor-grabbing">
+                <div class="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
+            </div>
+
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
+                <h3 class="text-xl font-bold" id="form-title">Tambah Prompt Baru</h3>
+                <button onclick="closeFormModal()" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 btn-press text-slate-500">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Form Body -->
+            <div class="p-6 overflow-y-auto pb-safe flex-1 space-y-4">
+                <input type="hidden" id="prompt-id">
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Judul Prompt *</label>
+                    <input type="text" id="prompt-title" placeholder="Cth: Copywriter Sales Page" class="w-full bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 transition-all focus:bg-white dark:focus:bg-darkSurface" oninput="saveDraft()">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Kategori *</label>
+                        <input type="text" id="prompt-category" list="category-list" placeholder="Cth: Marketing" class="w-full bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 transition-all focus:bg-white dark:focus:bg-darkSurface" oninput="saveDraft()">
+                        <datalist id="category-list">
+                            <option value="Marketing"></option>
+                            <option value="Coding"></option>
+                            <option value="SEO"></option>
+                            <option value="Edukasi"></option>
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Model AI</label>
+                        <select id="prompt-model" class="w-full bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 transition-all focus:bg-white dark:focus:bg-darkSurface" onchange="saveDraft()">
+                            <option value="Semua Model">Semua Model</option>
+                            <option value="ChatGPT">ChatGPT</option>
+                            <option value="Claude">Claude</option>
+                            <option value="Gemini">Gemini</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-end mb-1">
+                        <label class="block text-sm font-medium text-slate-600 dark:text-slate-400">Isi Prompt *</label>
+                        <span class="text-[10px] text-primary bg-primaryLight px-2 py-0.5 rounded-md font-medium hidden" id="draft-indicator">Draf tersimpan</span>
+                    </div>
+                    <textarea id="prompt-content" rows="6" placeholder="Tulis instruksi prompt Anda di sini. Gunakan [kurung siku] untuk variabel yang bisa diubah nanti..." class="w-full bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 transition-all font-mono text-sm leading-relaxed resize-none focus:bg-white dark:focus:bg-darkSurface" oninput="saveDraft()"></textarea>
+                </div>
+
+                <div class="flex items-center gap-3 mt-2">
+                    <input type="checkbox" id="prompt-favorite" class="w-5 h-5 accent-primary cursor-pointer rounded" onchange="saveDraft()">
+                    <label for="prompt-favorite" class="text-sm font-medium cursor-pointer flex items-center gap-1">Tandai sebagai Favorit <i data-lucide="star" class="w-4 h-4 text-amber-500 fill-amber-500"></i></label>
+                </div>
+            </div>
+
+            <!-- Footer Action -->
+            <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 shrink-0 bg-white dark:bg-darkSurface md:rounded-b-2xl pb-safe md:pb-4">
+                <button type="button" onclick="clearDraftAndClose()" class="px-5 py-2.5 rounded-xl font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 btn-press">Batal</button>
+                <button type="button" onclick="savePrompt()" class="bg-primary hover:bg-opacity-90 text-white px-6 py-2.5 rounded-xl font-medium btn-press shadow-soft flex items-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4"></i> Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ==================== MAIN JAVASCRIPT ==================== -->
+    <script>
+        // --- 1. STATE & CONSTANTS ---
+        const DB_NAME = 'AuraPromptDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'prompts';
+        
+        let db = null;
+        let currentTab = 'dashboard';
+        let promptsData = [];
+        let categories = new Set();
+        let copyCount = parseInt(localStorage.getItem('aura_copy_count') || '0', 10);
+
+        // --- 2. THEME & BRANDING INIT ---
+        function initTheme() {
+            try {
+                const savedColor = localStorage.getItem('aura_primary_color') || '#7c3aed';
+                document.documentElement.style.setProperty('--color-primary', savedColor);
+                document.getElementById('setting-color').value = savedColor;
+                document.getElementById('color-hex-display').textContent = savedColor;
+
+                const savedName = localStorage.getItem('aura_app_name') || 'AuraPrompt';
+                document.getElementById('app-name-desktop').textContent = savedName;
+                document.getElementById('app-name-mobile').textContent = savedName;
+                document.title = savedName + ' - AI Prompt Manager';
+                document.getElementById('setting-app-name').value = savedName;
+
+                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                    updateThemeIcons(true);
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    updateThemeIcons(false);
+                }
+            } catch (e) { console.error("Theme Init Error:", e); }
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
+            updateThemeIcons(isDark);
+        }
+
+        function updateThemeIcons(isDark) {
+            const icons = ['mobile-theme-icon', 'desktop-theme-icon'];
+            icons.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    el.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+                }
+            });
+            lucide.createIcons();
+        }
+
+        function saveBranding() {
+            const newName = document.getElementById('setting-app-name').value.trim() || 'AuraPrompt';
+            const newColor = document.getElementById('setting-color').value;
+
+            localStorage.setItem('aura_app_name', newName);
+            localStorage.setItem('aura_primary_color', newColor);
+            
+            initTheme();
+            showToast('Pengaturan berhasil disimpan!', 'success');
+        }
+
+        // --- 3. INDEXED DB WRAPPER ---
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) {
+                    showToast("Browser tidak mendukung penyimpanan lokal yang memadai.", "error");
+                    reject("IndexedDB not supported");
+                    return;
+                }
+
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onerror = (e) => {
+                    console.error("IndexedDB Error:", e);
+                    showToast("Gagal memuat database (Mungkin mode Incognito).", "error");
+                    reject(e);
+                };
+                
+                request.onupgradeneeded = (e) => {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains(STORE_NAME)) {
+                        database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+
+                request.onsuccess = (e) => {
+                    db = e.target.result;
+                    checkDummyData().then(() => {
+                        loadPrompts().then(resolve);
+                    }).catch(console.error);
+                };
+            });
+        }
+
+        async function checkDummyData() {
+            return new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const countReq = store.count();
+                
+                countReq.onsuccess = () => {
+                    if (countReq.result === 0) {
+                        const dummies = [
+                            { title: "Ahli Penulis Artikel SEO", category: "SEO", model: "Semua Model", content: "Bertindaklah sebagai Ahli SEO dan Copywriter senior. Tulis artikel sepanjang 1000 kata tentang [TOPIK] dengan keyword utama [KEYWORD].\n\nGunakan struktur H1, H2, H3 yang relevan, paragraf pendek, dan tone bahasa yang [TONE].", isFavorite: true, createdAt: Date.now() },
+                            { title: "Code Review & Refactor", category: "Coding", model: "ChatGPT", content: "Tolong review kode [BAHASA] berikut ini. Identifikasi bug potensial, masalah keamanan, dan berikan saran refactoring untuk meningkatkan performa dan keterbacaan.\n\nTerapkan prinsip Clean Code.\n\nKode:\n[PASTE KODE DISINI]", isFavorite: false, createdAt: Date.now() - 100000 },
+                            { title: "Strategi Konten Instagram 1 Bulan", category: "Marketing", model: "Claude", content: "Buatkan kalender konten Instagram selama 30 hari untuk bisnis [JENIS BISNIS] yang menjual [PRODUK]. Target audiens adalah [AUDIENS].\n\nBuat dalam format tabel berisi:\n- Hari\n- Tema Konten\n- Format (Reels/Carousel/Single)\n- Ide Visual\n- Copywriting singkat", isFavorite: true, createdAt: Date.now() - 200000 }
+                        ];
+                        
+                        const txWrite = db.transaction(STORE_NAME, 'readwrite');
+                        dummies.forEach(d => txWrite.objectStore(STORE_NAME).add(d));
+                        txWrite.oncomplete = () => resolve();
+                        txWrite.onerror = () => resolve(); // Tetap resolve meski gagal inject dummy
+                    } else {
+                        resolve();
+                    }
+                }
+                countReq.onerror = () => resolve();
+            });
+        }
+
+        function dbGetAll() {
+            return new Promise((resolve) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const req = tx.objectStore(STORE_NAME).getAll();
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve([]); // Fallback array kosong jika error
+            });
+        }
+
+        function dbAdd(item) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).add(item);
+                tx.oncomplete = resolve;
+                tx.onerror = reject;
+            });
+        }
+
+        function dbUpdate(item) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).put(item);
+                tx.oncomplete = resolve;
+                tx.onerror = reject;
+            });
+        }
+
+        function dbDelete(id) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).delete(id);
+                tx.oncomplete = resolve;
+                tx.onerror = reject;
+            });
+        }
+
+        // --- 4. CORE LOGIC & UI RENDER ---
+        async function loadPrompts() {
+            if(!db) return;
+            promptsData = await dbGetAll();
+            promptsData.sort((a, b) => b.createdAt - a.createdAt); // Terbaru di atas
+            
+            categories.clear();
+            promptsData.forEach(p => {
+                if(p.category) categories.add(p.category);
+            });
+            
+            updateDashboardStats();
+            updateCategoryDropdown();
+            renderPrompts();
+            renderRecentPrompts();
+            renderFavorites(); // Fungsi render tab favorit
+        }
+
+        function updateDashboardStats() {
+            document.getElementById('stat-total').textContent = promptsData.length;
+            document.getElementById('stat-fav').textContent = promptsData.filter(p => p.isFavorite).length;
+            document.getElementById('stat-cat').textContent = categories.size;
+            document.getElementById('stat-copied').textContent = copyCount;
+        }
+
+        function updateCategoryDropdown() {
+            const select = document.getElementById('filter-category');
+            const selectFav = document.getElementById('filter-category-fav');
+            if(!select || !selectFav) return;
+
+            const currentVal = select.value;
+            const currentValFav = selectFav.value;
+            
+            select.innerHTML = '<option value="all">Semua Kategori</option>';
+            selectFav.innerHTML = '<option value="all">Semua Kategori</option>';
+            
+            Array.from(categories).sort().forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                select.appendChild(opt);
+                
+                const optFav = document.createElement('option');
+                optFav.value = cat;
+                optFav.textContent = cat;
+                selectFav.appendChild(optFav);
+            });
+            select.value = currentVal || 'all';
+            selectFav.value = currentValFav || 'all';
+        }
+
+        function renderPrompts() {
+            const grid = document.getElementById('prompts-grid');
+            const emptyState = document.getElementById('empty-state');
+            const searchInput = document.getElementById('search-input');
+            const search = searchInput ? searchInput.value.toLowerCase() : '';
+            const filterCat = document.getElementById('filter-category').value;
+
+            const filtered = promptsData.filter(p => {
+                const matchSearch = p.title.toLowerCase().includes(search) || p.content.toLowerCase().includes(search);
+                const matchCat = filterCat === 'all' || p.category === filterCat;
+                return matchSearch && matchCat;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+                grid.innerHTML = filtered.map(p => generatePromptCard(p)).join('');
+            }
+            lucide.createIcons();
+        }
+
+        // LOGIKA BARU UNTUK TAB FAVORIT
+        function renderFavorites() {
+            const grid = document.getElementById('favorites-grid');
+            const emptyState = document.getElementById('empty-state-fav');
+            const searchInputFav = document.getElementById('search-input-fav');
+            const search = searchInputFav ? searchInputFav.value.toLowerCase() : '';
+            const filterCatFav = document.getElementById('filter-category-fav') ? document.getElementById('filter-category-fav').value : 'all';
+
+            if(!grid || !emptyState) return;
+
+            const favorites = promptsData.filter(p => {
+                if (!p.isFavorite) return false;
+                const matchSearch = p.title.toLowerCase().includes(search) || p.content.toLowerCase().includes(search);
+                const matchCat = filterCatFav === 'all' || p.category === filterCatFav;
+                return matchSearch && matchCat;
+            });
+
+            if (favorites.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+                grid.innerHTML = favorites.map(p => generatePromptCard(p)).join('');
+            }
+            lucide.createIcons();
+        }
+
+        function renderRecentPrompts() {
+            const container = document.getElementById('recent-prompts-container');
+            if(!container) return;
+
+            const recent = promptsData.slice(0, 4);
+            
+            if(recent.length === 0) {
+                container.innerHTML = '<div class="col-span-2 text-slate-500 text-sm py-4">Belum ada data.</div>';
+            } else {
+                container.innerHTML = recent.map(p => generatePromptCard(p)).join('');
+            }
+            lucide.createIcons();
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag])
+            );
+        }
+
+        function generatePromptCard(p) {
+            const favClass = p.isFavorite ? 'text-amber-500 fill-amber-500' : 'text-slate-400';
+            const safeContent = escapeHTML(p.content);
+            const copyContentUrlSafe = encodeURIComponent(p.content); // Aman untuk atribut HTML
+            
+            return `
+            <div class="glass-panel rounded-2xl p-5 shadow-sm hover:shadow-soft transition-all group relative animate-fade-up border-l-4 border-l-transparent hover:border-l-primary flex flex-col h-full">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex flex-wrap gap-2 mb-2">
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">${escapeHTML(p.category)}</span>
+                        ${p.model && p.model !== 'Semua Model' ? `<span class="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-primaryLight text-primary">${escapeHTML(p.model)}</span>` : ''}
+                    </div>
+                    <button onclick="toggleFavorite(${p.id})" class="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 btn-press">
+                        <i data-lucide="star" class="w-5 h-5 ${favClass}"></i>
+                    </button>
+                </div>
+                
+                <h4 class="font-bold text-lg mb-2 leading-tight">${escapeHTML(p.title)}</h4>
+                <div class="text-slate-500 dark:text-slate-400 text-sm font-mono bg-slate-50/50 dark:bg-slate-900/50 p-3 rounded-xl mb-4 flex-1 border border-slate-100 dark:border-slate-800 whitespace-pre-wrap leading-relaxed overflow-y-auto max-h-48">${safeContent}</div>
+                
+                <div class="flex items-center gap-2 mt-auto pt-2">
+                    <button onclick="copyPrompt('${copyContentUrlSafe}')" class="flex-1 bg-primary text-white py-2 rounded-xl text-sm font-medium btn-press flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity">
+                        <i data-lucide="copy" class="w-4 h-4"></i> Salin
+                    </button>
+                    <button onclick="editPrompt(${p.id})" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-primary btn-press">
+                        <i data-lucide="edit" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="deletePrompt(${p.id})" class="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 btn-press">
+                        <i data-lucide="trash" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                </br>
+                </br>
+                </br>
+
+            </div>
+            `;
+        }
+
+        // --- 5. CRUD & ACTIONS ---
+        function copyPrompt(encodedText) {
+            const text = decodeURIComponent(encodedText);
+            
+            // Modern Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    successCopy();
+                }).catch(() => fallbackCopy(text));
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            // Hindari scroll/keyboard popup di HP
+            textArea.style.position = "fixed";
+            textArea.style.top = "-9999px";
+            textArea.style.left = "-9999px";
+            textArea.setAttribute("readonly", "");
+            
+            document.body.appendChild(textArea);
+            textArea.select();
+            textArea.setSelectionRange(0, 99999); // Untuk Mobile
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) successCopy();
+                else showToast('Gagal menyalin teks', 'error');
+            } catch (err) {
+                showToast('Gagal menyalin teks', 'error');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function successCopy() {
+            copyCount++;
+            localStorage.setItem('aura_copy_count', copyCount);
+            updateDashboardStats();
+            showToast('Prompt berhasil disalin! ✨', 'success');
+        }
+
+        async function toggleFavorite(id) {
+            const prompt = promptsData.find(p => p.id === id);
+            if(prompt) {
+                prompt.isFavorite = !prompt.isFavorite;
+                await dbUpdate(prompt);
+                await loadPrompts();
+            }
+        }
+
+        async function deletePrompt(id) {
+            if(confirm('Hapus prompt ini secara permanen?')) {
+                try {
+                    await dbDelete(id);
+                    showToast('Prompt berhasil dihapus', 'success');
+                    await loadPrompts();
+                } catch(e) {
+                    showToast('Gagal menghapus prompt', 'error');
+                }
+            }
+        }
+
+        // --- 6. MODAL & STATE PERSISTENCE (DRAFT) ---
+        const modal = document.getElementById('form-modal');
+        const modalContent = document.getElementById('form-modal-content');
+
+        function openFormModal() {
+            modal.classList.remove('hidden');
+            // Trigger animation
+            setTimeout(() => {
+                modalContent.style.transform = 'translateY(0)';
+                if(window.innerWidth >= 768) {
+                    modalContent.style.transform = 'translate(-50%, -50%)'; // Desktop centering
+                }
+            }, 10);
+            
+            // Cek Draft
+            try {
+                const draftData = localStorage.getItem('aura_prompt_draft');
+                if (draftData) {
+                    const draft = JSON.parse(draftData);
+                    if (!document.getElementById('prompt-id').value && draft.title !== undefined) {
+                        document.getElementById('prompt-title').value = draft.title || '';
+                        document.getElementById('prompt-category').value = draft.category || '';
+                        document.getElementById('prompt-content').value = draft.content || '';
+                        document.getElementById('prompt-model').value = draft.model || 'Semua Model';
+                        document.getElementById('prompt-favorite').checked = !!draft.isFavorite;
+                        document.getElementById('draft-indicator').classList.remove('hidden');
+                    }
+                } else {
+                    document.getElementById('draft-indicator').classList.add('hidden');
+                }
+            } catch(e) { console.error("Draft load error", e); }
+        }
+
+        function closeFormModal() {
+            if(window.innerWidth < 768) {
+                modalContent.style.transform = 'translateY(100%)';
+            } else {
+                modal.classList.add('hidden');
+            }
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modalContent.style.transform = ''; // reset transform inline style
+            }, 300);
+        }
+
+        function saveDraft() {
+            // Hanya save draft jika ini prompt baru (id kosong)
+            if(!document.getElementById('prompt-id').value) {
+                const draft = {
+                    title: document.getElementById('prompt-title').value,
+                    category: document.getElementById('prompt-category').value,
+                    content: document.getElementById('prompt-content').value,
+                    model: document.getElementById('prompt-model').value,
+                    isFavorite: document.getElementById('prompt-favorite').checked
+                };
+                localStorage.setItem('aura_prompt_draft', JSON.stringify(draft));
+                document.getElementById('draft-indicator').classList.remove('hidden');
+            }
+        }
+
+        function clearDraftAndClose() {
+            document.getElementById('prompt-id').value = '';
+            document.getElementById('prompt-title').value = '';
+            document.getElementById('prompt-category').value = '';
+            document.getElementById('prompt-content').value = '';
+            document.getElementById('prompt-model').value = 'Semua Model';
+            document.getElementById('prompt-favorite').checked = false;
+            document.getElementById('form-title').textContent = 'Tambah Prompt Baru';
+            
+            localStorage.removeItem('aura_prompt_draft');
+            document.getElementById('draft-indicator').classList.add('hidden');
+            closeFormModal();
+        }
+
+        async function savePrompt() {
+            const title = document.getElementById('prompt-title').value.trim();
+            const category = document.getElementById('prompt-category').value.trim();
+            const content = document.getElementById('prompt-content').value.trim();
+            const model = document.getElementById('prompt-model').value;
+            const isFavorite = document.getElementById('prompt-favorite').checked;
+            const id = document.getElementById('prompt-id').value;
+
+            if(!title || !category || !content) {
+                showToast('Judul, Kategori, dan Isi Wajib diisi!', 'error');
+                return;
+            }
+
+            const item = {
+                title, category, content, model, isFavorite,
+                updatedAt: Date.now()
+            };
+
+            try {
+                if (id) {
+                    item.id = parseInt(id, 10);
+                    const existing = promptsData.find(p => p.id === item.id);
+                    item.createdAt = existing ? existing.createdAt : Date.now();
+                    await dbUpdate(item);
+                    showToast('Prompt berhasil diperbarui', 'success');
+                } else {
+                    item.createdAt = Date.now();
+                    await dbAdd(item);
+                    showToast('Prompt baru tersimpan!', 'success');
+                    localStorage.removeItem('aura_prompt_draft'); 
+                }
+
+                // SMART AUTO-CLOSE
+                clearDraftAndClose();
+                await loadPrompts();
+            } catch(e) {
+                showToast('Terjadi kesalahan sistem saat menyimpan', 'error');
+                console.error(e);
+            }
+        }
+
+        function editPrompt(id) {
+            const p = promptsData.find(x => x.id === id);
+            if(p) {
+                document.getElementById('form-title').textContent = 'Edit Prompt';
+                document.getElementById('prompt-id').value = p.id;
+                document.getElementById('prompt-title').value = p.title;
+                document.getElementById('prompt-category').value = p.category;
+                document.getElementById('prompt-content').value = p.content;
+                document.getElementById('prompt-model').value = p.model || 'Semua Model';
+                document.getElementById('prompt-favorite').checked = p.isFavorite;
+                document.getElementById('draft-indicator').classList.add('hidden'); // Sembunyikan indikator draft
+                openFormModal();
+            }
+        }
+
+        // --- 7. MOBILE SWIPE-TO-CLOSE LOGIC ---
+        const handle = document.getElementById('cart-drag-handle');
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+
+        handle.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            modalContent.style.transition = 'none'; // hapus transisi saat drag
+        }, {passive: true});
+
+        handle.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+            const diff = currentY - startY;
+            if (diff > 0) { // Hanya bisa ditarik ke bawah
+                modalContent.style.transform = `translateY(${diff}px)`;
+            }
+        }, {passive: true});
+
+        handle.addEventListener('touchend', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            modalContent.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            
+            const diff = currentY - startY;
+            if (diff > 150) { // Threshold toleransi swipe
+                closeFormModal();
+            } else {
+                modalContent.style.transform = ''; // kembali ke asal jika kurang ditarik
+            }
+        });
+
+        // --- 8. EXCEL BACKUP & RESTORE (SheetJS) ---
+        function exportToExcel() {
+            if(promptsData.length === 0) {
+                showToast('Tidak ada data untuk diexport', 'error');
+                return;
+            }
+            
+            try {
+                // Format data untuk Excel
+                const exportData = promptsData.map(p => ({
+                    'ID': p.id,
+                    'Judul': p.title,
+                    'Kategori': p.category,
+                    'Model AI': p.model || 'Semua Model',
+                    'Isi Prompt': p.content,
+                    'Favorit': p.isFavorite ? 'Ya' : 'Tidak',
+                    'Dibuat Pada': new Date(p.createdAt).toLocaleString('id-ID')
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Prompts");
+                
+                // Set lebar kolom agar rapi
+                const wscols = [{wch:5}, {wch:30}, {wch:15}, {wch:15}, {wch:60}, {wch:10}, {wch:20}];
+                ws['!cols'] = wscols;
+
+                const date = new Date().toISOString().slice(0,10);
+                XLSX.writeFile(wb, `AuraPrompt_Backup_${date}.xlsx`);
+                showToast('Backup berhasil diunduh', 'success');
+            } catch(e) {
+                showToast('Gagal membuat file Excel', 'error');
+                console.error(e);
+            }
+        }
+
+        function importFromExcel(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                    let imported = 0;
+                    for (let row of jsonData) {
+                        if(row['Judul'] && row['Isi Prompt']) { 
+                            const item = {
+                                title: row['Judul'],
+                                category: row['Kategori'] || 'Uncategorized',
+                                model: row['Model AI'] || 'Semua Model',
+                                content: row['Isi Prompt'],
+                                isFavorite: row['Favorit'] === 'Ya',
+                                createdAt: Date.now() + imported // agar tidak ada timestamp crash
+                            };
+                            await dbAdd(item);
+                            imported++;
+                        }
+                    }
+                    
+                    if(imported > 0) {
+                        showToast(`${imported} Prompt berhasil diimport!`, 'success');
+                        await loadPrompts();
+                    } else {
+                        showToast('Tidak ada data valid yang ditemukan', 'error');
+                    }
+                    e.target.value = ''; // Reset input file
+                } catch(err) {
+                    showToast('Gagal membaca file Excel', 'error');
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function factoryReset() {
+            if(confirm('PERINGATAN! Semua data prompt akan terhapus secara permanen. Lanjutkan?')) {
+                try {
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    tx.objectStore(STORE_NAME).clear();
+                    tx.oncomplete = async () => {
+                        localStorage.removeItem('aura_copy_count');
+                        localStorage.removeItem('aura_prompt_draft');
+                        copyCount = 0;
+                        await loadPrompts();
+                        showToast('Data berhasil di-reset sepenuhnya', 'success');
+                    }
+                } catch(e) {
+                    showToast('Gagal mereset data', 'error');
+                }
+            }
+        }
+
+        // --- 9. UTILS (Navigation & Toast) ---
+        function switchTab(tabId) {
+            currentTab = tabId;
+            
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            // Show target
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            
+            // Update Desktop Nav Active State (Safe Selectors)
+            document.querySelectorAll('.desktop-nav-item').forEach(el => {
+                el.classList.remove('bg-primaryLight', 'text-primary');
+                el.classList.add('text-slate-500', 'hover:bg-slate-50', 'dark:hover:bg-slate-800');
+            });
+            const dNav = document.getElementById(`nav-desktop-${tabId}`);
+            if(dNav) {
+                dNav.classList.remove('text-slate-500', 'hover:bg-slate-50', 'dark:hover:bg-slate-800');
+                dNav.classList.add('bg-primaryLight', 'text-primary');
+            }
+
+            // Update Mobile Nav Active State (Safe Selectors)
+            document.querySelectorAll('.mobile-nav-item').forEach(el => {
+                el.classList.remove('text-primary');
+                el.classList.add('text-slate-400');
+            });
+            const mNav = document.getElementById(`nav-mobile-${tabId}`);
+            if(mNav) mNav.classList.replace('text-slate-400', 'text-primary');
+
+            // Scroll to top safely
+            const scrollArea = document.getElementById('content-scroll-area');
+            if(scrollArea) scrollArea.scrollTop = 0;
+        }
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if(!container) return;
+
+            const toast = document.createElement('div');
+            
+            const colorClass = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
+            const icon = type === 'success' ? 'check-circle-2' : 'alert-circle';
+            
+            toast.className = `${colorClass} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-toast whitespace-nowrap`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i> <span class="font-medium text-sm">${msg}</span>`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+            
+            setTimeout(() => { 
+                if(toast.parentNode) toast.remove(); 
+            }, 3000);
+        }
+
+        // --- 10. INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initTheme();
+            
+            initDB().then(() => {
+                switchTab('dashboard'); // Default tab
+            }).catch(e => {
+                console.warn("DB Initialization skipped or failed", e);
+                // Fallback rendering even if DB fails
+                switchTab('dashboard'); 
+            });
+
+            // Register Service Worker
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./sw.js')
+                        .then(reg => console.log('Service Worker Registered'))
+                        .catch(err => console.log('Service Worker Reg Failed', err));
+                });
+            }
+        });
+
+    </script>
+</body>
+</html>
